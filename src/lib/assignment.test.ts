@@ -22,7 +22,7 @@ describe('parseCsv', () => {
 describe('buildIndex', () => {
   // Header and first row of sheet "7208" (trimmed).
   const csv = [
-    'No,assignment_id,kategori,kode_kbli,nama_usaha,metrik_tenaga_kerja,metrik_upah_gaji,metrik_biaya_produksi,metrik_biaya_pembelian,metrik_biaya_operasional,metrik_biaya_non_operasional,metrik_total_pengeluaran,metrik_pendapatan_barang_jasa,metrik_pendapatan_lainnya,metrik_nilai_tambah,metrik_total_aset,link_fasih_sm,link_fasih_sm',
+    'No,assignment_id,kategori,kode_kbli,nama_usaha,metrik_tenaga_kerja,26a,26b,26c,26d,26e,metrik_total_pengeluaran,26f,26g,metrik_nilai_tambah,metrik_total_aset,link_fasih_sm,link_fasih_sm',
     '1,287c3bf8-a839-47c0-b060-3277298d2842,A,1450,UTP PETERNAKAN (I GEDE OKTAVIONA),1,0,"240,000,000",0,"1,200,000",0,"241,200,000","120,000",0,"-241,080,000",0,x,x',
   ].join('\n');
 
@@ -36,7 +36,7 @@ describe('buildIndex', () => {
   });
 
   it('accepts the assigment_id spelling', () => {
-    expect(buildIndex('assigment_id,metrik_upah_gaji\nX,5').get('x')?.patch.wages).toBe(5);
+    expect(buildIndex('assigment_id,26a\nX,5').get('x')?.patch.wages).toBe(5);
   });
 
   it('throws when there is no id column', () => {

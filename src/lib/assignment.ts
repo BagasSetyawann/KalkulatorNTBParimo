@@ -14,13 +14,13 @@ const ID_COLUMNS = ['assignment_id', 'assigment_id', 'assignmentid', 'id_assignm
 /** CSV column -> form field. */
 const FIELD_MAP: Record<string, keyof NtbInput> = {
   metrik_tenaga_kerja: 'workers',
-  metrik_upah_gaji: 'wages',
-  metrik_biaya_produksi: 'production',
-  metrik_biaya_pembelian: 'purchases',
-  metrik_biaya_operasional: 'operating',
-  metrik_biaya_non_operasional: 'nonOperating',
-  metrik_pendapatan_barang_jasa: 'revenue',
-  metrik_pendapatan_lainnya: 'otherRevenue',
+  '26a': 'wages',
+  '26b': 'production',
+  '26c': 'purchases',
+  '26d': 'operating',
+  '26e': 'nonOperating',
+  '26f': 'revenue',
+  '26g': 'otherRevenue',
 };
 
 /** Columns without a form field; shown for reference only. */

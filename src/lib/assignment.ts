@@ -19,8 +19,8 @@ const FIELD_MAP: Record<string, keyof NtbInput> = {
   '26c': 'purchases',
   '26d': 'operating',
   '26e': 'nonOperating',
-  '26f': 'revenue',
-  '26g': 'otherRevenue',
+  '27a': 'revenue',
+  '27b': 'otherRevenue',
 };
 
 /** Columns without a form field; shown for reference only. */

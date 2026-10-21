@@ -22,12 +22,13 @@ describe('parseCsv', () => {
 describe('buildIndex', () => {
   // Header and first row of sheet "7208" (trimmed).
   const csv = [
-    'No,assignment_id,kategori,kode_kbli,nama_usaha,metrik_tenaga_kerja,26a,26b,26c,26d,26e,metrik_total_pengeluaran,26f,26g,metrik_nilai_tambah,metrik_total_aset,link_fasih_sm,link_fasih_sm',
+    'No,assignment_id,kategori,kode_kbli,nama_usaha,metrik_tenaga_kerja,26a,26b,26c,26d,26e,metrik_total_pengeluaran,27a,27b,metrik_nilai_tambah,metrik_total_aset,link_fasih_sm,link_fasih_sm',
     '1,287c3bf8-a839-47c0-b060-3277298d2842,A,1450,UTP PETERNAKAN (I GEDE OKTAVIONA),1,0,"240,000,000",0,"1,200,000",0,"241,200,000","120,000",0,"-241,080,000",0,x,x',
   ].join('\n');
 
   it('maps columns to form fields, case-insensitive id', () => {
-    const rec = buildIndex(csv).get('287C3BF8-A839-47C0-B060-3277298D2842'.toLowerCase())!;
+    const [rec] = buildIndex(csv).get('287C3BF8-A839-47C0-B060-3277298D2842'.toLowerCase())!;
+    expect(rec.row).toBe(2);
     expect(rec.name).toBe('UTP PETERNAKAN (I GEDE OKTAVIONA)');
     expect(rec.category).toBe('A');
     expect(rec.kbli).toBe('01450');
@@ -36,7 +37,16 @@ describe('buildIndex', () => {
   });
 
   it('accepts the assigment_id spelling', () => {
-    expect(buildIndex('assigment_id,26a\nX,5').get('x')?.patch.wages).toBe(5);
+    expect(buildIndex('assigment_id,26a\nX,5').get('x')?.[0].patch.wages).toBe(5);
+  });
+
+  it('keeps every business sharing a duplicated id, in sheet order', () => {
+    const list = buildIndex('assignment_id,nama_usaha,26a\nX,Usaha A,1\nY,Lain,2\nx,Usaha B,3').get('x')!;
+    expect(list.map((r) => [r.name, r.row, r.patch.wages])).toEqual([['Usaha A', 2, 1], ['Usaha B', 4, 3]]);
+  });
+
+  it('collapses rows that are exact copies', () => {
+    expect(buildIndex('assignment_id,nama_usaha,26a\nX,Usaha A,1\nX,Usaha A,1').get('x')).toHaveLength(1);
   });
 
   it('throws when there is no id column', () => {

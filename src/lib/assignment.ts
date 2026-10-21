@@ -34,6 +34,8 @@ export type ReferenceKey = keyof typeof REFERENCE_COLUMNS;
 
 export interface AssignmentRecord {
   id: string;
+  /** 1-based row number in the sheet (header row = 1), useful to tell duplicates apart. */
+  row: number;
   /** nama_usaha */
   name: string | null;
   /** kategori, e.g. "A" */
@@ -83,8 +85,16 @@ export function parseNumber(raw: string | undefined): number | null {
 
 const normalize = (h: string) => h.trim().toLowerCase().replace(/\s+/g, '_');
 
-/** Builds a lookup table keyed by assignment id from the CSV text. */
-export function buildIndex(csv: string): Map<string, AssignmentRecord> {
+/** Same business data (ignores id/row), used to collapse rows that are exact copies. */
+const fingerprint = (r: AssignmentRecord) =>
+  JSON.stringify([r.name?.toLowerCase() ?? null, r.category, r.kbli, r.patch, r.reference]);
+
+/**
+ * Builds a lookup table keyed by lower-cased assignment id from the CSV text.
+ * An id may appear on several rows in the sheet, so each key holds every distinct record
+ * (rows that are exact copies of an earlier row are collapsed), in sheet order.
+ */
+export function buildIndex(csv: string): Map<string, AssignmentRecord[]> {
   const rows = parseCsv(csv);
   // The header is the first row that has an id column (allows title rows above it).
   const headerAt = rows.findIndex((r) => r.some((c) => ID_COLUMNS.includes(normalize(c))));
@@ -97,10 +107,11 @@ export function buildIndex(csv: string): Map<string, AssignmentRecord> {
   const kbliCol = col('kode_kbli');
   const text = (r: string[], i: number) => (i >= 0 && r[i]?.trim() ? r[i].trim() : null);
 
-  const index = new Map<string, AssignmentRecord>();
-  for (const r of rows.slice(headerAt + 1)) {
+  const index = new Map<string, AssignmentRecord[]>();
+  const seen = new Map<string, Set<string>>();
+  rows.slice(headerAt + 1).forEach((r, offset) => {
     const id = (r[idCol] ?? '').trim();
-    if (!id) continue;
+    if (!id) return;
     const patch: Partial<NtbInput> = {};
     const reference: AssignmentRecord['reference'] = {};
     header.forEach((h, i) => {
@@ -111,22 +122,35 @@ export function buildIndex(csv: string): Map<string, AssignmentRecord> {
       }
     });
     const kbliDigits = text(r, kbliCol)?.replace(/\D/g, '') ?? '';
-    index.set(id.toLowerCase(), {
+    const record: AssignmentRecord = {
       id,
+      row: headerAt + offset + 2,
       name: text(r, nameCol),
       category: text(r, categoryCol)?.toUpperCase() ?? null,
       kbli: kbliDigits ? kbliDigits.padStart(5, '0') : null,
       patch,
       reference,
-    });
-  }
+    };
+    const key = id.toLowerCase();
+    const fp = fingerprint(record);
+    const prints = seen.get(key) ?? new Set<string>();
+    if (prints.has(fp)) return;
+    prints.add(fp);
+    seen.set(key, prints);
+    const list = index.get(key);
+    if (list) list.push(record);
+    else index.set(key, [record]);
+  });
   return index;
 }
 
-let cache: Promise<Map<string, AssignmentRecord>> | null = null;
+let cache: Promise<Map<string, AssignmentRecord[]>> | null = null;
 
-/** Downloads the CSV (once per session unless refresh) and finds one assignment. */
-export async function findAssignment(id: string, refresh = false): Promise<AssignmentRecord | null> {
+/**
+ * Downloads the CSV (once per session unless refresh) and returns every record with this id
+ * (empty when not found, more than one when the id is duplicated in the sheet).
+ */
+export async function findAssignment(id: string, refresh = false): Promise<AssignmentRecord[]> {
   if (!cache || refresh) {
     cache = fetch(ASSIGNMENT_CSV_URL, { cache: 'no-store' })
       .then((res) => {
@@ -137,5 +161,5 @@ export async function findAssignment(id: string, refresh = false): Promise<Assig
     cache.catch(() => { cache = null; });
   }
   const index = await cache;
-  return index.get(id.trim().toLowerCase()) ?? null;
+  return index.get(id.trim().toLowerCase()) ?? [];
 }
